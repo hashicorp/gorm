@@ -45,6 +45,8 @@ type Config struct {
 	QueryFields bool
 	// CreateBatchSize default create batch size
 	CreateBatchSize int
+	// ConvertNullToZeroValues will convert SQL null values to zero values
+	ConvertNullToZeroValues bool
 
 	// ClauseBuilders clause builder
 	ClauseBuilders map[string]clause.ClauseBuilder
