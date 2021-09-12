@@ -181,13 +181,32 @@ func CreateWithReturning(db *gorm.DB) {
 							}
 						}
 					case reflect.Struct:
+						resetFields := map[int]*schema.Field{}
 						for idx, field := range fields {
-							values[idx] = field.ReflectValueOf(db.Statement.ReflectValue).Addr().Interface()
+							switch {
+							case db.Config.ConvertNullToZeroValues:
+								if field.FieldType.Kind() == reflect.Ptr {
+									values[idx] = field.ReflectValueOf(db.Statement.ReflectValue).Addr().Interface()
+								} else {
+									reflectValue := reflect.New(reflect.PtrTo(field.FieldType))
+									reflectValue.Elem().Set(field.ReflectValueOf(db.Statement.ReflectValue).Addr())
+									values[idx] = reflectValue.Interface()
+									resetFields[idx] = field
+								}
+							default:
+								values[idx] = field.ReflectValueOf(db.Statement.ReflectValue).Addr().Interface()
+							}
 						}
-
 						if rows.Next() {
 							db.RowsAffected++
 							db.AddError(rows.Scan(values...))
+							if db.Config.ConvertNullToZeroValues {
+								for idx, field := range resetFields {
+									if v := reflect.ValueOf(values[idx]).Elem().Elem(); v.IsValid() {
+										field.ReflectValueOf(db.Statement.ReflectValue).Set(v)
+									}
+								}
+							}
 						}
 					}
 				} else {
