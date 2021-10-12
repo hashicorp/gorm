@@ -6,6 +6,7 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"reflect"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -271,13 +272,19 @@ func (stmt *Statement) BuildCondition(query interface{}, args ...interface{}) []
 		if _, err := strconv.Atoi(s); err != nil {
 			if s == "" && len(args) == 0 {
 				return nil
-			} else if len(args) == 0 || (len(args) > 0 && strings.Contains(s, "?")) {
+			}
+
+			if len(args) == 0 || (len(args) > 0 && strings.Contains(s, "?")) {
 				// looks like a where condition
 				return []clause.Expression{clause.Expr{SQL: s, Vars: args}}
-			} else if len(args) > 0 && strings.Contains(s, "@") {
+			}
+
+			if len(args) > 0 && strings.Contains(s, "@") {
 				// looks like a named query
 				return []clause.Expression{clause.NamedExpr{SQL: s, Vars: args}}
-			} else if len(args) == 1 {
+			}
+
+			if len(args) == 1 {
 				return []clause.Expression{clause.Eq{Column: s, Value: args[0]}}
 			}
 		}
@@ -621,6 +628,8 @@ func (stmt *Statement) Changed(fields ...string) bool {
 	return false
 }
 
+var nameMatcher = regexp.MustCompile(`^[\W]?(?:[a-z_]+?)[\W]?\.[\W]?([a-z_]+?)[\W]?$`)
+
 // SelectAndOmitColumns get select and omit columns, select -> true, omit -> false
 func (stmt *Statement) SelectAndOmitColumns(requireCreate, requireUpdate bool) (map[string]bool, bool) {
 	results := map[string]bool{}
@@ -641,6 +650,8 @@ func (stmt *Statement) SelectAndOmitColumns(requireCreate, requireUpdate bool) (
 			}
 		} else if field := stmt.Schema.LookUpField(column); field != nil && field.DBName != "" {
 			results[field.DBName] = true
+		} else if matches := nameMatcher.FindStringSubmatch(column); len(matches) == 2 {
+			results[matches[1]] = true
 		} else {
 			results[column] = true
 		}
@@ -656,6 +667,8 @@ func (stmt *Statement) SelectAndOmitColumns(requireCreate, requireUpdate bool) (
 			}
 		} else if field := stmt.Schema.LookUpField(omit); field != nil && field.DBName != "" {
 			results[field.DBName] = false
+		} else if matches := nameMatcher.FindStringSubmatch(omit); len(matches) == 2 {
+			results[matches[1]] = false
 		} else {
 			results[omit] = false
 		}
