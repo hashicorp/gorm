@@ -11,9 +11,9 @@ jobs:
     name: Label issues and pull requests
     steps:
       - name: check out
-        uses: actions/checkout@v2
+        uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
 
       - name: labeler
-        uses: jinzhu/super-labeler-action@develop
+        uses: jinzhu/super-labeler-action@develop # TSCCR: no entry for action: "jinzhu/super-labeler-action"
         with:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
